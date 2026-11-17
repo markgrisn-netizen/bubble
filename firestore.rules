@@ -1,0 +1,245 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidStyle(style) {
+      return style in ['natural', 'faithful', 'cinematic', 'literary', 'simplified', 'literal', 'character_voice'];
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() <= 80 &&
+             data.preferredTargetLang is string && data.preferredTargetLang.size() >= 2 && data.preferredTargetLang.size() <= 16 &&
+             data.preferredStyle is string && isValidStyle(data.preferredStyle) &&
+             data.preferredProvider is string && data.preferredProvider.size() >= 2 && data.preferredProvider.size() <= 40 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidProject(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.sourceLang is string && data.sourceLang.size() >= 2 && data.sourceLang.size() <= 16 &&
+             data.targetLang is string && data.targetLang.size() >= 2 && data.targetLang.size() <= 16 &&
+             data.translationStyle is string && isValidStyle(data.translationStyle) &&
+             data.readingDirection in ['rtl', 'ltr'] &&
+             data.readerMode in ['vertical_webtoon', 'horizontal_manga'] &&
+             data.sfxMode in ['keep', 'side_note', 'visual_replace', 'artistic', 'ignore'] &&
+             data.cleanBackgroundText is bool &&
+             data.pageCount is int && data.pageCount >= 0 && data.pageCount <= 5000 &&
+             data.contextNotes is string && data.contextNotes.size() <= 2000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidChapter(data, userId, projectId) {
+      return data.userId is string && data.userId == userId && data.userId.size() <= 128 &&
+             data.projectId is string && data.projectId == projectId && data.projectId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.chapterNumber is int && data.chapterNumber >= 0 && data.chapterNumber <= 100000 &&
+             data.importSource in ['direct_url', 'browser_webview', 'share_target', 'file_import'] &&
+             data.sourceUrl is string && data.sourceUrl.size() <= 1000 &&
+             data.pageCount is int && data.pageCount >= 0 && data.pageCount <= 1000 &&
+             data.lastReadPageIndex is int && data.lastReadPageIndex >= 0 && data.lastReadPageIndex <= 1000 &&
+             data.isOfflineReady is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidGlossaryEntry(data, userId, projectId) {
+      return data.userId is string && data.userId == userId && data.userId.size() <= 128 &&
+             data.projectId is string && data.projectId == projectId && data.projectId.size() <= 128 &&
+             data.sourceTerm is string && data.sourceTerm.size() >= 1 && data.sourceTerm.size() <= 160 &&
+             data.targetTerm is string && data.targetTerm.size() >= 1 && data.targetTerm.size() <= 160 &&
+             data.category in ['character', 'place', 'term', 'speech_style'] &&
+             data.notes is string && data.notes.size() <= 500 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidTranslationJob(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId.size() <= 128 &&
+             data.projectId is string && data.projectId.size() >= 1 && data.projectId.size() <= 128 &&
+             data.chapterId is string && data.chapterId.size() >= 1 && data.chapterId.size() <= 128 &&
+             data.providerId is string && data.providerId.size() >= 1 && data.providerId.size() <= 64 &&
+             data.status in ['queued', 'running', 'completed', 'failed'] &&
+             data.processedPages is int && data.processedPages >= 0 && data.processedPages <= 1000 &&
+             data.totalPages is int && data.totalPages >= 0 && data.totalPages <= 1000 &&
+             data.errorMessage is string && data.errorMessage.size() <= 500 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidSourceAdapterLog(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId.size() <= 128 &&
+             data.url is string && data.url.size() >= 1 && data.url.size() <= 1000 &&
+             data.adapterName is string && data.adapterName.size() >= 1 && data.adapterName.size() <= 100 &&
+             data.status in ['success', 'blocked_by_source', 'error'] &&
+             data.httpCode is int && data.httpCode >= 0 && data.httpCode <= 999 &&
+             data.extractedCount is int && data.extractedCount >= 0 && data.extractedCount <= 5000 &&
+             data.message is string && data.message.size() <= 500 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'preferredTargetLang', 'preferredStyle', 'preferredProvider', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'preferredTargetLang', 'preferredStyle', 'preferredProvider', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'preferredTargetLang', 'preferredStyle', 'preferredProvider', 'updatedAt']);
+
+      allow delete: if false;
+
+      match /projects/{projectId} {
+        allow get: if isOwner(userId) && isValidId(projectId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(projectId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'sourceLang', 'targetLang', 'translationStyle', 'readingDirection', 'readerMode', 'sfxMode', 'cleanBackgroundText', 'pageCount', 'contextNotes', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'sourceLang', 'targetLang', 'translationStyle', 'readingDirection', 'readerMode', 'sfxMode', 'cleanBackgroundText', 'pageCount', 'contextNotes', 'createdAt', 'updatedAt']) &&
+                         isValidProject(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(projectId) &&
+                         isValidProject(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'sourceLang', 'targetLang', 'translationStyle',
+                           'readingDirection', 'readerMode', 'sfxMode', 'cleanBackgroundText',
+                           'pageCount', 'contextNotes', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(projectId);
+
+        match /chapters/{chapterId} {
+          allow get: if isOwner(userId) && isValidId(projectId) && isValidId(chapterId);
+          allow list: if isOwner(userId) && isValidId(projectId);
+
+          allow create: if isOwner(userId) &&
+                           isValidId(projectId) &&
+                           isValidId(chapterId) &&
+                           incoming().keys().hasAll(['userId', 'projectId', 'title', 'chapterNumber', 'importSource', 'sourceUrl', 'pageCount', 'lastReadPageIndex', 'isOfflineReady', 'createdAt', 'updatedAt']) &&
+                           incoming().keys().hasOnly(['userId', 'projectId', 'title', 'chapterNumber', 'importSource', 'sourceUrl', 'pageCount', 'lastReadPageIndex', 'isOfflineReady', 'createdAt', 'updatedAt']) &&
+                           isValidChapter(incoming(), userId, projectId) &&
+                           exists(/databases/$(database)/documents/users/$(userId)/projects/$(projectId));
+
+          allow update: if isOwner(userId) &&
+                           isValidId(projectId) &&
+                           isValidId(chapterId) &&
+                           isValidChapter(incoming(), userId, projectId) &&
+                           incoming().userId == existing().userId &&
+                           incoming().projectId == existing().projectId &&
+                           incoming().createdAt == existing().createdAt &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'title', 'chapterNumber', 'pageCount', 'lastReadPageIndex', 'isOfflineReady', 'updatedAt'
+                           ]);
+
+          allow delete: if isOwner(userId) && isValidId(projectId) && isValidId(chapterId);
+        }
+
+        match /glossary/{entryId} {
+          allow get: if isOwner(userId) && isValidId(projectId) && isValidId(entryId);
+          allow list: if isOwner(userId) && isValidId(projectId);
+
+          allow create: if isOwner(userId) &&
+                           isValidId(projectId) &&
+                           isValidId(entryId) &&
+                           incoming().keys().hasAll(['userId', 'projectId', 'sourceTerm', 'targetTerm', 'category', 'notes', 'createdAt', 'updatedAt']) &&
+                           incoming().keys().hasOnly(['userId', 'projectId', 'sourceTerm', 'targetTerm', 'category', 'notes', 'createdAt', 'updatedAt']) &&
+                           isValidGlossaryEntry(incoming(), userId, projectId) &&
+                           exists(/databases/$(database)/documents/users/$(userId)/projects/$(projectId));
+
+          allow update: if isOwner(userId) &&
+                           isValidId(projectId) &&
+                           isValidId(entryId) &&
+                           isValidGlossaryEntry(incoming(), userId, projectId) &&
+                           incoming().userId == existing().userId &&
+                           incoming().projectId == existing().projectId &&
+                           incoming().createdAt == existing().createdAt &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'sourceTerm', 'targetTerm', 'category', 'notes', 'updatedAt'
+                           ]);
+
+          allow delete: if isOwner(userId) && isValidId(projectId) && isValidId(entryId);
+        }
+      }
+
+      match /translationJobs/{jobId} {
+        allow get: if isOwner(userId) && isValidId(jobId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(jobId) &&
+                         incoming().keys().hasAll(['userId', 'projectId', 'chapterId', 'providerId', 'status', 'processedPages', 'totalPages', 'errorMessage', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'projectId', 'chapterId', 'providerId', 'status', 'processedPages', 'totalPages', 'errorMessage', 'createdAt', 'updatedAt']) &&
+                         isValidTranslationJob(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(jobId) &&
+                         isValidTranslationJob(incoming(), userId) &&
+                         !(existing().status in ['completed', 'failed']) &&
+                         incoming().userId == existing().userId &&
+                         incoming().projectId == existing().projectId &&
+                         incoming().chapterId == existing().chapterId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'status', 'processedPages', 'totalPages', 'errorMessage', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(jobId);
+      }
+
+      match /sourceLogs/{logId} {
+        allow get: if isOwner(userId) && isValidId(logId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(logId) &&
+                         incoming().keys().hasAll(['userId', 'url', 'adapterName', 'status', 'httpCode', 'extractedCount', 'message', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'url', 'adapterName', 'status', 'httpCode', 'extractedCount', 'message', 'createdAt']) &&
+                         isValidSourceAdapterLog(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(logId);
+      }
+    }
+  }
+}

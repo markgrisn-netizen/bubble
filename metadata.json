@@ -1,0 +1,6 @@
+{
+  "name": "فقاعة (Faqqa)",
+  "description": "تطبيق فقاعة لترجمة المانغا والمانهوا والويب تون والكوميكس مع متصفح ويب حقيقي مدمج، واكتشاف فقاعات الحوار وتبييضها بدقة، ووضع النص العربي (RTL).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

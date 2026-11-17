@@ -1,0 +1,141 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User preferences for Faqqa comic translation",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string" },
+        "preferredTargetLang": { "type": "string" },
+        "preferredStyle": {
+          "type": "string",
+          "enum": ["natural", "faithful", "cinematic", "literary", "simplified", "literal", "character_voice"]
+        },
+        "preferredProvider": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "displayName", "preferredTargetLang", "preferredStyle", "preferredProvider", "createdAt", "updatedAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A manga, manhwa, webtoon, or comic translation project",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "sourceLang": { "type": "string" },
+        "targetLang": { "type": "string" },
+        "translationStyle": {
+          "type": "string",
+          "enum": ["natural", "faithful", "cinematic", "literary", "simplified", "literal", "character_voice"]
+        },
+        "readingDirection": { "type": "string", "enum": ["rtl", "ltr"] },
+        "readerMode": { "type": "string", "enum": ["vertical_webtoon", "horizontal_manga"] },
+        "sfxMode": { "type": "string", "enum": ["keep", "side_note", "visual_replace", "artistic", "ignore"] },
+        "cleanBackgroundText": { "type": "boolean" },
+        "pageCount": { "type": "integer" },
+        "contextNotes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "sourceLang", "targetLang", "translationStyle", "readingDirection", "readerMode", "sfxMode", "cleanBackgroundText", "pageCount", "contextNotes", "createdAt", "updatedAt"]
+    },
+    "Chapter": {
+      "title": "Chapter",
+      "description": "A chapter belonging to a translation project",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "title": { "type": "string" },
+        "chapterNumber": { "type": "integer" },
+        "importSource": { "type": "string", "enum": ["direct_url", "browser_webview", "share_target", "file_import"] },
+        "sourceUrl": { "type": "string" },
+        "pageCount": { "type": "integer" },
+        "lastReadPageIndex": { "type": "integer" },
+        "isOfflineReady": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "projectId", "title", "chapterNumber", "importSource", "sourceUrl", "pageCount", "lastReadPageIndex", "isOfflineReady", "createdAt", "updatedAt"]
+    },
+    "GlossaryEntry": {
+      "title": "GlossaryEntry",
+      "description": "Character, location, or terminology entry for consistent translation",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "sourceTerm": { "type": "string" },
+        "targetTerm": { "type": "string" },
+        "category": { "type": "string", "enum": ["character", "place", "term", "speech_style"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "projectId", "sourceTerm", "targetTerm", "category", "notes", "createdAt", "updatedAt"]
+    },
+    "TranslationJob": {
+      "title": "TranslationJob",
+      "description": "Audit log and status of chapter translation runs",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "providerId": { "type": "string" },
+        "status": { "type": "string", "enum": ["queued", "running", "completed", "failed"] },
+        "processedPages": { "type": "integer" },
+        "totalPages": { "type": "integer" },
+        "errorMessage": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "projectId", "chapterId", "providerId", "status", "processedPages", "totalPages", "errorMessage", "createdAt", "updatedAt"]
+    },
+    "SourceAdapterLog": {
+      "title": "SourceAdapterLog",
+      "description": "Diagnostic log of Direct URL SourceAdapter import attempts",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "url": { "type": "string" },
+        "adapterName": { "type": "string" },
+        "status": { "type": "string", "enum": ["success", "blocked_by_source", "error"] },
+        "httpCode": { "type": "integer" },
+        "extractedCount": { "type": "integer" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "url", "adapterName", "status", "httpCode", "extractedCount", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Per-user Faqqa profile and default preferences"
+    },
+    "/users/{userId}/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "User's comic/manga translation projects"
+    },
+    "/users/{userId}/projects/{projectId}/chapters/{chapterId}": {
+      "schema": { "$ref": "#/entities/Chapter" },
+      "description": "Chapters inside a translation project"
+    },
+    "/users/{userId}/projects/{projectId}/glossary/{entryId}": {
+      "schema": { "$ref": "#/entities/GlossaryEntry" },
+      "description": "Project-specific translation glossary and character context memory"
+    },
+    "/users/{userId}/translationJobs/{jobId}": {
+      "schema": { "$ref": "#/entities/TranslationJob" },
+      "description": "Translation job history and progress per user"
+    },
+    "/users/{userId}/sourceLogs/{logId}": {
+      "schema": { "$ref": "#/entities/SourceAdapterLog" },
+      "description": "Direct URL SourceAdapter audit logs"
+    }
+  }
+}
